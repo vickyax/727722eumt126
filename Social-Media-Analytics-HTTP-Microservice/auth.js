@@ -16,22 +16,29 @@ const COMPANY_INFO = {
 
 async function refreshToken() {
   try {
-      if(!authToken) {
+     
         const response = await axios.post('http://20.244.56.144/test/auth', COMPANY_INFO);
         authToken = response.data.access_token;
         tokenExpiration = Date.now() + (Number(response.data.expires_in) * 1000);
         console.log('New auth token acquired');
-    }
   } catch (error) {
     console.error('Token refresh failed:', error.message);
   }
 }
+let isRefreshing = false;
+let refreshPromise = null;
 
-function getAuthHeader() {
+async function getAuthHeader() {
   if (Date.now() >= tokenExpiration) {
-    refreshToken();
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshToken().finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+    await refreshPromise;
   }
   return { headers: { Authorization: `Bearer ${authToken}` } };
 }
-
 export { getAuthHeader, refreshToken };
